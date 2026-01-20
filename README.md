@@ -10,7 +10,7 @@ Lua HTTP server with routing and middleware.
 - Middleware (CORS, body parsing, rate limiting)
 - JWT authentication (HS256)
 - Server-Sent Events (SSE) for realtime
-- RFC-compliant parsers (HTTP, URI, MIME, multipart, email)
+- RFC-compliant parsers (HTTP, URI, MIME, multipart)
 - Timer wheel for efficient timeout management
 
 ## Installation
@@ -181,6 +181,12 @@ local url = require("mote.url")
 - LuaSocket >= 3.0
 - lua-cjson >= 2.1
 - C extension for SHA256/HMAC (mote.hashings_c or mote.crypto_c)
+
+## Credits
+
+- [lpeg_patterns](https://github.com/daurnimator/lpeg_patterns) by daurnimator (MIT)
+- [hmac_sha256](https://github.com/h5p9sl/hmac_sha256) by h5p9sl (Unlicense)
+- [luasocket-poll-api-test](https://github.com/FreeMasen/luasocket-poll-api-test) by FreeMasen (MIT)
 
 ## License
 
