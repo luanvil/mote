@@ -18,6 +18,7 @@ mote.file = server.file
 mote.download = server.download
 mote.sse = server.sse
 mote.redirect = server.redirect
+mote.cookie = server.cookie
 mote.status_text = server.status_text
 
 -- re-export router functions

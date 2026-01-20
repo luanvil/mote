@@ -111,7 +111,67 @@ mote.text(ctx, status, content)
 mote.file(ctx, status, data, filename, mime_type)
 mote.download(ctx, status, data, filename, mime_type)
 mote.redirect(ctx, url, status)
+mote.cookie(ctx, name, value, options)
 ```
+
+<details>
+<summary><strong>Static Files</strong></summary>
+
+Serve static files using `mote.file()`:
+
+```lua
+local mime_types = {
+    css = "text/css",
+    js = "application/javascript",
+    png = "image/png",
+    svg = "image/svg+xml",
+}
+
+mote.get("/static/:file", function(ctx)
+    local filename = ctx.params.file
+    -- Prevent path traversal
+    if filename:match("%.%.")  then
+        return mote.error(ctx, 400, "invalid path")
+    end
+
+    local f = io.open("./public/" .. filename, "rb")
+    if not f then return mote.error(ctx, 404, "not found") end
+
+    local data = f:read("*a")
+    f:close()
+
+    local ext = filename:match("%.(%w+)$")
+    mote.file(ctx, 200, data, filename, mime_types[ext])
+end)
+```
+
+> [!TIP]
+> For production, serve static files via Nginx or a CDN for better performance and caching.
+
+</details>
+
+<details>
+<summary><strong>Cookies</strong></summary>
+
+Set cookies with `mote.cookie()`:
+
+```lua
+mote.cookie(ctx, "session", "abc123", {
+    path = "/",
+    httpOnly = true,
+    secure = true,
+    sameSite = "Strict",
+    maxAge = 86400,
+})
+```
+
+Read cookies from `ctx.cookies`:
+
+```lua
+local session = ctx.cookies.session
+```
+
+</details>
 
 <details>
 <summary><strong>Context Object</strong></summary>
@@ -123,6 +183,7 @@ ctx.method       -- HTTP method
 ctx.path         -- URL path
 ctx.full_path    -- Path with query string
 ctx.query_string -- Query string (raw)
+ctx.query        -- Parsed query params (lazy)
 ctx.headers      -- Request headers (lowercase keys)
 ctx.body         -- Parsed body (JSON or multipart)
 ctx.params       -- Route parameters
@@ -206,7 +267,8 @@ app:on_tick(function()
 end)
 
 app:run()
-app:stop()
+app:stop()          -- immediate shutdown
+app:stop(5)         -- graceful: drain connections for 5 seconds
 ```
 
 </details>
@@ -244,4 +306,4 @@ stylua .              # Format
 [MIT](LICENSE)
 
 > [!NOTE]
-> This library was written with assistance from LLMs. Human review and guidance provided throughout.
+> This library was written with assistance from LLMs. Human review and guidance provided where needed.

@@ -9,6 +9,7 @@ local http_parser = require("mote.parser.http")
 local ip_parser = require("mote.parser.ip")
 local timer_wheel = require("mote.timer_wheel")
 local sse_mod = require("mote.pubsub.sse")
+local url_mod = require("mote.url")
 
 local concat = table.concat
 local insert = table.insert
@@ -267,12 +268,16 @@ local function create_context(method, path, headers, body, config)
         _response_headers = {},
         _response_body = nil,
         _cookies = nil,
+        _query = nil,
     }
     return setmetatable(ctx, {
         __index = function(self, key)
             if key == "cookies" then
                 if not self._cookies then self._cookies = parse_cookies(headers["cookie"]) end
                 return self._cookies
+            elseif key == "query" then
+                if not self._query then self._query = url_mod.parse_query(self.query_string) end
+                return self._query
             end
         end,
     })
@@ -666,19 +671,26 @@ function server.create(config)
         end
     end
 
-    function instance:stop()
+    function instance:stop(drain_timeout)
         self._running = false
+        self._socket:close()
+
+        if drain_timeout and drain_timeout > 0 then
+            local deadline = socket.gettime() + drain_timeout
+            while #client_list > 0 and socket.gettime() < deadline do
+                self:step(0.1)
+                compact_client_list()
+            end
+        end
+
         for i = 1, #client_list do
             local c = client_list[i]
             if c then
                 timers:cancel(c.timeout_handle)
-                pcall(function()
-                    c.wrapper.socket:close()
-                end)
+                pcall(function() c.wrapper.socket:close() end)
                 if c.sse_client then sse_mod.cleanup(c.sse_client) end
             end
         end
-        self._socket:close()
     end
 
     function instance.active_connections(_)
@@ -743,6 +755,32 @@ function server.redirect(ctx, url, status)
     ctx._status = status or 302
     ctx._response_headers["Location"] = url
     ctx._response_body = ""
+end
+
+function server.cookie(ctx, name, value, options)
+    options = options or {}
+    local parts = { name .. "=" .. (value or "") }
+
+    if options.maxAge then insert(parts, "Max-Age=" .. options.maxAge) end
+    if options.expires then insert(parts, "Expires=" .. options.expires) end
+    if options.path then insert(parts, "Path=" .. options.path) end
+    if options.domain then insert(parts, "Domain=" .. options.domain) end
+    if options.secure then insert(parts, "Secure") end
+    if options.httpOnly then insert(parts, "HttpOnly") end
+    if options.sameSite then insert(parts, "SameSite=" .. options.sameSite) end
+
+    local cookie_str = concat(parts, "; ")
+
+    local existing = ctx._response_headers["Set-Cookie"]
+    if existing then
+        if type(existing) == "table" then
+            insert(existing, cookie_str)
+        else
+            ctx._response_headers["Set-Cookie"] = { existing, cookie_str }
+        end
+    else
+        ctx._response_headers["Set-Cookie"] = cookie_str
+    end
 end
 
 -- exports --
