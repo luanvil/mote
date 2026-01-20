@@ -7,7 +7,7 @@
 Lightweight Lua HTTP server with routing and middleware.
 
 [![CI](https://github.com/luanvil/mote/actions/workflows/ci.yml/badge.svg)](https://github.com/luanvil/mote/actions/workflows/ci.yml)
-[![LuaRocks](https://img.shields.io/luarocks/v/luanvila/mote)](https://luarocks.org/modules/luanvila/mote)
+[![LuaRocks](https://img.shields.io/luarocks/v/luanvil/mote)](https://luarocks.org/modules/luanvil/mote)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
@@ -54,6 +54,9 @@ Coroutine-based with keep-alive. No external event loop.
 ```bash
 luarocks install mote
 ```
+
+> [!TIP]
+> Works with Lua 5.1–5.4. LuaJIT recommended for performance.
 
 ## Quick Start
 
@@ -240,9 +243,5 @@ stylua .              # Format
 
 [MIT](LICENSE)
 
-<details>
-<summary>AI Disclaimer</summary>
-
-This library was written with assistance from LLMs (Claude). Human review and guidance provided throughout.
-
-</details>
+> [!NOTE]
+> This library was written with assistance from LLMs (Claude). Human review and guidance provided throughout.
