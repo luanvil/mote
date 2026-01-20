@@ -295,6 +295,10 @@ luacheck .            # Lint
 stylua .              # Format
 ```
 
+## Examples
+
+- [ena-api](https://github.com/ena-lang/ena-api) — Compile API for the Ena programming language
+
 ## Credits
 
 - [lpeg_patterns](https://github.com/daurnimator/lpeg_patterns) by daurnimator (MIT)
