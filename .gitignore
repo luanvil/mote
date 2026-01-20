@@ -1,0 +1,34 @@
+# Lua
+*.luac
+lua_modules/
+.luarocks/
+
+# LuaRocks
+*.rock
+*.src.rock
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.out
+coverage/
+luacov.*
+
+# Build
+dist/
+build/
+
+# C extensions (compiled locally)
+*.so
+*.o
+*.dylib
