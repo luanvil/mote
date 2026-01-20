@@ -286,6 +286,16 @@ local url = require("mote.url")
 
 </details>
 
+## Deployment
+
+Mote serves HTTP only. For production, use a reverse proxy for TLS termination:
+
+```
+Internet → Caddy/Nginx (HTTPS) → Mote (HTTP)
+```
+
+Cloud platforms like Fly.io, Railway, and Render handle TLS at the edge automatically.
+
 ## Development
 
 ```bash
