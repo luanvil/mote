@@ -32,3 +32,6 @@ build/
 *.so
 *.o
 *.dylib
+
+# Local files
+*.local.md

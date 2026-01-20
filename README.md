@@ -244,4 +244,4 @@ stylua .              # Format
 [MIT](LICENSE)
 
 > [!NOTE]
-> This library was written with assistance from LLMs (Claude). Human review and guidance provided throughout.
+> This library was written with assistance from LLMs. Human review and guidance provided throughout.
