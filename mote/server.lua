@@ -687,7 +687,9 @@ function server.create(config)
             local c = client_list[i]
             if c then
                 timers:cancel(c.timeout_handle)
-                pcall(function() c.wrapper.socket:close() end)
+                pcall(function()
+                    c.wrapper.socket:close()
+                end)
                 if c.sse_client then sse_mod.cleanup(c.sse_client) end
             end
         end
