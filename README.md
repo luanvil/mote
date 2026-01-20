@@ -1,17 +1,53 @@
+<div align="center">
+
+<img src="assets/mote.svg" alt="mote logo" width="128"/>
+
 # mote
 
-Lua HTTP server with routing and middleware.
+Lightweight Lua HTTP server with routing and middleware.
+
+[![CI](https://github.com/luanvil/mote/actions/workflows/ci.yml/badge.svg)](https://github.com/luanvil/mote/actions/workflows/ci.yml)
+[![LuaRocks](https://img.shields.io/luarocks/v/luanvila/mote)](https://luarocks.org/modules/luanvila/mote)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+</div>
 
 ## Features
 
-- Express-style routing with parameter extraction
-- Coroutine-based async I/O (no external event loop)
-- Keep-alive connections
-- Middleware (CORS, body parsing, rate limiting)
-- JWT authentication (HS256)
-- Server-Sent Events (SSE) for realtime
-- RFC-compliant parsers (HTTP, URI, MIME, multipart)
-- Timer wheel for efficient timeout management
+<table>
+<tr>
+<td width="50%">
+
+**Express-style Routing**
+
+Parameter extraction, method handlers, before filters.
+
+</td>
+<td width="50%">
+
+**Middleware**
+
+CORS, body parsing, rate limiting, JWT support.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Realtime**
+
+Server-Sent Events with pub/sub broker.
+
+</td>
+<td width="50%">
+
+**Async I/O**
+
+Coroutine-based with keep-alive. No external event loop.
+
+</td>
+</tr>
+</table>
 
 ## Installation
 
@@ -51,7 +87,7 @@ mote.post(path, handler)
 mote.put(path, handler)
 mote.patch(path, handler)
 mote.delete(path, handler)
-mote.all(path, handler)      -- matches any method
+mote.all(path, handler)
 ```
 
 Routes support parameters:
@@ -65,16 +101,17 @@ end)
 ### Response Helpers
 
 ```lua
-mote.json(ctx, status, data)           -- JSON response
-mote.error(ctx, status, message)       -- JSON error
-mote.html(ctx, status, content)        -- HTML response
-mote.text(ctx, status, content)        -- Plain text response
-mote.file(ctx, status, data, filename, mime_type)      -- Inline file
-mote.download(ctx, status, data, filename, mime_type)  -- Download file
-mote.redirect(ctx, url, status)        -- Redirect (default 302)
+mote.json(ctx, status, data)
+mote.error(ctx, status, message)
+mote.html(ctx, status, content)
+mote.text(ctx, status, content)
+mote.file(ctx, status, data, filename, mime_type)
+mote.download(ctx, status, data, filename, mime_type)
+mote.redirect(ctx, url, status)
 ```
 
-### Context Object
+<details>
+<summary><strong>Context Object</strong></summary>
 
 The `ctx` object passed to handlers contains:
 
@@ -92,6 +129,8 @@ ctx.config       -- Server config
 ctx.is_multipart -- true if multipart request
 ```
 
+</details>
+
 ### Middleware
 
 Before filters run before every request:
@@ -105,7 +144,8 @@ mote.before(function(ctx)
 end)
 ```
 
-### Rate Limiting
+<details>
+<summary><strong>Rate Limiting</strong></summary>
 
 ```lua
 mote.ratelimit_configure({
@@ -114,7 +154,10 @@ mote.ratelimit_configure({
 })
 ```
 
-### CORS
+</details>
+
+<details>
+<summary><strong>CORS</strong></summary>
 
 ```lua
 mote.configure_cors({
@@ -123,6 +166,8 @@ mote.configure_cors({
     headers = "Content-Type, Authorization",
 })
 ```
+
+</details>
 
 ### Server-Sent Events
 
@@ -135,11 +180,11 @@ mote.get("/events", function(ctx)
     mote.sse(ctx, client)
 end)
 
--- Broadcast to subscribers
 broker.broadcast("messages", "new", { text = "Hello!" })
 ```
 
-### Server Lifecycle
+<details>
+<summary><strong>Server Options</strong></summary>
 
 ```lua
 local app = mote.create({
@@ -150,21 +195,21 @@ local app = mote.create({
     keep_alive_timeout = 5,
     keep_alive_max = 1000,
     max_concurrent = 10000,
-    ratelimit = true,  -- set false to disable
+    ratelimit = true,
 })
 
--- Optional tick callback (runs every event loop iteration)
 app:on_tick(function()
-    -- custom logic
+    -- runs every event loop iteration
 end)
 
-app:run()       -- blocking
-app:stop()      -- graceful shutdown
+app:run()
+app:stop()
 ```
 
-### Submodules
+</details>
 
-For advanced usage:
+<details>
+<summary><strong>Submodules</strong></summary>
 
 ```lua
 local parser = require("mote.parser")
@@ -174,13 +219,16 @@ local log = require("mote.log")
 local url = require("mote.url")
 ```
 
-## Dependencies
+</details>
 
-- Lua >= 5.1
-- LPeg >= 1.0
-- LuaSocket >= 3.0
-- lua-cjson >= 2.1
-- C extension for SHA256/HMAC (mote.hashings_c or mote.crypto_c)
+## Development
+
+```bash
+luarocks make         # Build
+busted                # Tests
+luacheck .            # Lint
+stylua .              # Format
+```
 
 ## Credits
 
@@ -190,4 +238,11 @@ local url = require("mote.url")
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
+<details>
+<summary>AI Disclaimer</summary>
+
+This library was written with assistance from LLMs (Claude). Human review and guidance provided throughout.
+
+</details>
