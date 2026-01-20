@@ -7,8 +7,8 @@ source = {
 }
 
 description = {
-    summary = "Lua HTTP server with routing and middleware",
-    detailed = "Mote is a coroutine-based HTTP server with Express-style routing, middleware support, JWT authentication, and Server-Sent Events.",
+    summary = "Lightweight Lua HTTP server with routing and middleware",
+    detailed = "Coroutine-based HTTP server with Express-style routing, middleware, SSE, and more.",
     homepage = "https://github.com/luanvil/mote",
     license = "MIT",
 }
