@@ -18,9 +18,9 @@ Lightweight Lua HTTP server with routing and middleware.
 <tr>
 <td width="50%">
 
-**Express-style Routing**
+**Routing**
 
-Parameter extraction, method handlers, before filters.
+Parameter extraction, method handlers.
 
 </td>
 <td width="50%">
@@ -64,15 +64,15 @@ luarocks install mote
 local mote = require("mote")
 
 mote.get("/", function(ctx)
-    mote.json(ctx, 200, { message = "Hello, World!" })
+    ctx.response.body = { message = "Hello, World!" }
 end)
 
 mote.get("/users/:id", function(ctx)
-    mote.json(ctx, 200, { id = ctx.params.id })
+    ctx.response.body = { id = ctx.params.id }
 end)
 
 mote.post("/echo", function(ctx)
-    mote.json(ctx, 200, ctx.body)
+    ctx.response.body = ctx.request.body
 end)
 
 local app = mote.create({ port = 8080 })
@@ -101,23 +101,27 @@ mote.get("/users/:id/posts/:post_id", function(ctx)
 end)
 ```
 
-### Response Helpers
+### Response
+
+Set response via `ctx.response`:
 
 ```lua
-mote.json(ctx, status, data)
-mote.error(ctx, status, message)
-mote.html(ctx, status, content)
-mote.text(ctx, status, content)
-mote.file(ctx, status, data, filename, mime_type)
-mote.download(ctx, status, data, filename, mime_type)
-mote.redirect(ctx, url, status)
-mote.cookie(ctx, name, value, options)
+ctx.response.body = { id = 1 }   -- auto JSON, auto 200
+ctx.response.body = "hello"      -- text/plain
+ctx.response.status = 201        -- override status
+ctx.response.type = "text/html"  -- override content-type
+
+ctx:set("X-Custom", "val")       -- set response header
+ctx:append("Link", "<...>")      -- append to header
+ctx:remove("X-Custom")           -- remove response header
+ctx:redirect("/login")           -- 302 redirect
+ctx:cookie("session", "abc123", { httpOnly = true })
+ctx:throw(401, "unauthorized")   -- set status/body and stop
+ctx:assert(user, 401, "login required")  -- assert or throw
 ```
 
 <details>
 <summary><strong>Static Files</strong></summary>
-
-Serve static files using `mote.file()`:
 
 ```lua
 local mime_types = {
@@ -129,19 +133,18 @@ local mime_types = {
 
 mote.get("/static/:file", function(ctx)
     local filename = ctx.params.file
-    -- Prevent path traversal
-    if filename:match("%.%.")  then
-        return mote.error(ctx, 400, "invalid path")
-    end
+    if filename:match("%.%.") then ctx:throw(400, "invalid path") end
 
     local f = io.open("./public/" .. filename, "rb")
-    if not f then return mote.error(ctx, 404, "not found") end
+    if not f then ctx:throw(404, "not found") end
 
     local data = f:read("*a")
     f:close()
 
     local ext = filename:match("%.(%w+)$")
-    mote.file(ctx, 200, data, filename, mime_types[ext])
+    ctx.response.type = mime_types[ext] or "application/octet-stream"
+    ctx:set("Content-Disposition", "inline; filename=" .. filename)
+    ctx.response.body = data
 end)
 ```
 
@@ -153,10 +156,10 @@ end)
 <details>
 <summary><strong>Cookies</strong></summary>
 
-Set cookies with `mote.cookie()`:
+Set cookies with `ctx:cookie()`:
 
 ```lua
-mote.cookie(ctx, "session", "abc123", {
+ctx:cookie("session", "abc123", {
     path = "/",
     httpOnly = true,
     secure = true,
@@ -176,35 +179,51 @@ local session = ctx.cookies.session
 <details>
 <summary><strong>Context Object</strong></summary>
 
-The `ctx` object passed to handlers contains:
+The `ctx` object passed to handlers:
 
 ```lua
-ctx.method       -- HTTP method
-ctx.path         -- URL path
-ctx.full_path    -- Path with query string
-ctx.query_string -- Query string (raw)
-ctx.query        -- Parsed query params (lazy)
-ctx.headers      -- Request headers (lowercase keys)
-ctx.body         -- Parsed body (JSON or multipart)
-ctx.params       -- Route parameters
-ctx.cookies      -- Parsed cookies (lazy)
-ctx.user         -- JWT payload (if authenticated)
-ctx.config       -- Server config
-ctx.is_multipart -- true if multipart request
+-- Request
+ctx.request.method   -- HTTP method
+ctx.request.path     -- URL path
+ctx.request.headers  -- Request headers (lowercase keys)
+ctx.request.body     -- Parsed body (JSON or multipart)
+ctx.params           -- Route parameters
+ctx.query            -- Parsed query params (lazy)
+ctx.cookies          -- Parsed cookies (lazy)
+ctx.url              -- Full URL (path + query string)
+ctx.ip               -- Client IP address
+ctx.user             -- JWT payload (if authenticated)
+ctx:get("Header")    -- Get request header (case-insensitive)
+
+-- Response
+ctx.response.body    -- Response body (table=JSON, string=text)
+ctx.response.status  -- HTTP status (auto 200 with body, 204 without)
+ctx.response.type    -- Content-Type override
+
+-- Shared state
+ctx.state            -- Pass data between middleware
+ctx.config           -- Server config
 ```
 
 </details>
 
 ### Middleware
 
-Before filters run before every request:
+Onion-style middleware with `next()`:
 
 ```lua
-mote.before(function(ctx)
+mote.use(function(ctx, next)
+    local start = os.clock()
+    next()  -- call downstream
+    local ms = (os.clock() - start) * 1000
+    ctx:set("X-Response-Time", string.format("%.3fms", ms))
+end)
+
+mote.use(function(ctx, next)
     if not ctx.user then
-        mote.error(ctx, 401, "unauthorized")
-        return true  -- abort
+        ctx:throw(401, "unauthorized")
     end
+    next()
 end)
 ```
 
@@ -282,6 +301,33 @@ local jwt = require("mote.jwt")
 local crypto = require("mote.crypto")
 local log = require("mote.log")
 local url = require("mote.url")
+```
+
+</details>
+
+<details>
+<summary><strong>Advanced</strong></summary>
+
+```lua
+-- Manual event loop control (for embedding)
+while true do
+    app:step(0.1)  -- process events, 100ms timeout
+end
+
+-- Monitoring
+local count = app.active_connections()
+
+-- Direct client messaging
+broker.send_to_client(client_id, "notification", { text = "Hello!" })
+
+-- SSE permission checker (called on each broadcast)
+broker.set_permission_checker(function(client, topic, record)
+    return client:get_auth() ~= nil  -- only authenticated clients
+end)
+
+-- Dynamic subscriptions
+client:subscribe("posts")
+client:unsubscribe("posts")
 ```
 
 </details>

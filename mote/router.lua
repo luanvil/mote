@@ -5,7 +5,7 @@ local lpeg = require("lpeg")
 local router = {}
 
 local routes = {}
-local before_filters = {}
+local middleware_stack = {}
 
 local P, C, Ct = lpeg.P, lpeg.C, lpeg.Ct
 
@@ -96,19 +96,28 @@ end
 
 function router.clear()
     routes = {}
-    before_filters = {}
+    middleware_stack = {}
 end
 
-function router.before(fn)
-    before_filters[#before_filters + 1] = fn
+function router.use(fn)
+    middleware_stack[#middleware_stack + 1] = fn
+    return router
 end
 
-function router.run_before_filters(ctx)
-    for _, filter in ipairs(before_filters) do
-        local abort = filter(ctx)
-        if abort or ctx._response_body then return true end
+function router.compose(handler)
+    return function(ctx)
+        local index = 0
+        local function dispatch()
+            index = index + 1
+            if index <= #middleware_stack then
+                local mw = middleware_stack[index]
+                mw(ctx, dispatch)
+            else
+                handler(ctx)
+            end
+        end
+        dispatch()
     end
-    return false
 end
 
 return router

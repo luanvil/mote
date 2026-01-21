@@ -56,4 +56,4 @@ jobs:
         with:
           template: mote.rockspec.template
           summary: Lightweight Lua HTTP server with routing and middleware
-          detailed_description: Coroutine-based HTTP server with Express-style routing, middleware, SSE, and more.
+          detailed_description: Coroutine-based HTTP server with routing, middleware, SSE, and more.

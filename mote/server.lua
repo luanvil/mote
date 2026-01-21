@@ -255,18 +255,99 @@ end
 
 -- request --
 
-local function create_context(method, path, headers, body, config)
+local ctx_methods = {}
+
+function ctx_methods:throw(status, message)
+    self.response.status = status or 500
+    self.response.body = { error = message or status_text[status] or "Error" }
+    error({ _mote_throw = true })
+end
+
+function ctx_methods:assert(value, status, message)
+    if not value then self:throw(status or 500, message) end
+    return value
+end
+
+function ctx_methods:get(field)
+    return self.request.headers[field:lower()]
+end
+
+function ctx_methods:set(name, value)
+    self.response.headers[name] = value
+    return self
+end
+
+function ctx_methods:append(name, value)
+    local existing = self.response.headers[name]
+    if existing then
+        if type(existing) == "table" then
+            insert(existing, value)
+        else
+            self.response.headers[name] = { existing, value }
+        end
+    else
+        self.response.headers[name] = value
+    end
+    return self
+end
+
+function ctx_methods:remove(name)
+    self.response.headers[name] = nil
+    return self
+end
+
+function ctx_methods:redirect(url, status)
+    self.response.status = status or 302
+    self.response.headers["Location"] = url
+    self.response.body = ""
+    return self
+end
+
+function ctx_methods:cookie(name, value, options)
+    options = options or {}
+    local parts = { name .. "=" .. (value or "") }
+
+    if options.maxAge then insert(parts, "Max-Age=" .. options.maxAge) end
+    if options.expires then insert(parts, "Expires=" .. options.expires) end
+    if options.path then insert(parts, "Path=" .. options.path) end
+    if options.domain then insert(parts, "Domain=" .. options.domain) end
+    if options.secure then insert(parts, "Secure") end
+    if options.httpOnly then insert(parts, "HttpOnly") end
+    if options.sameSite then insert(parts, "SameSite=" .. options.sameSite) end
+
+    local cookie_str = concat(parts, "; ")
+
+    local existing = self.response.headers["Set-Cookie"]
+    if existing then
+        if type(existing) == "table" then
+            insert(existing, cookie_str)
+        else
+            self.response.headers["Set-Cookie"] = { existing, cookie_str }
+        end
+    else
+        self.response.headers["Set-Cookie"] = cookie_str
+    end
+    return self
+end
+
+local function create_context(method, path, headers, request_body, config)
     local ctx = {
-        method = method,
-        path = path,
-        headers = headers,
-        body = body,
+        request = {
+            method = method,
+            path = path,
+            headers = headers,
+            body = request_body,
+        },
+        response = {
+            headers = {},
+            status = nil,
+            body = nil,
+            type = nil,
+        },
+        state = {},
         config = config,
         user = nil,
         params = {},
-        _status = nil,
-        _response_headers = {},
-        _response_body = nil,
         _cookies = nil,
         _query = nil,
     }
@@ -278,9 +359,41 @@ local function create_context(method, path, headers, body, config)
             elseif key == "query" then
                 if not self._query then self._query = url_mod.parse_query(self.query_string) end
                 return self._query
+            elseif key == "url" then
+                return self.request.path .. (self.query_string and ("?" .. self.query_string) or "")
+            elseif key == "ip" then
+                return self.wrapper and self.wrapper.ip or "unknown"
+            elseif ctx_methods[key] then
+                return ctx_methods[key]
             end
         end,
     })
+end
+
+local function finalize_response(ctx)
+    local body = ctx.response.body
+    local status = ctx.response.status
+    local resp_headers = middleware.cors_headers()
+
+    for k, v in pairs(ctx.response.headers) do
+        resp_headers[k] = v
+    end
+
+    if body == nil then
+        if not status then status = 204 end
+    elseif type(body) == "table" then
+        if not resp_headers["Content-Type"] then resp_headers["Content-Type"] = "application/json" end
+        body = middleware.encode_json(body)
+        if not status then status = 200 end
+    else
+        if not resp_headers["Content-Type"] then resp_headers["Content-Type"] = "text/plain; charset=utf-8" end
+        body = tostring(body)
+        if not status then status = 200 end
+    end
+
+    if ctx.response.type then resp_headers["Content-Type"] = ctx.response.type end
+
+    return status or 404, resp_headers, body
 end
 
 local function should_keep_alive(http_version, headers, wrapper, config)
@@ -376,40 +489,29 @@ local function handle_request(wrapper, config)
 
     ctx.params = params or {}
 
-    if router.run_before_filters(ctx) then
-        local status = ctx._status or 200
-        local resp_headers = middleware.cors_headers()
-        for k, v in pairs(ctx._response_headers) do
-            resp_headers[k] = v
-        end
-        send_response(wrapper, status, resp_headers, ctx._response_body, keep_alive)
-        log.info("http", req.method .. " " .. path .. " " .. status .. " (filter)")
-        return true, keep_alive, nil
-    end
-
-    local ok, handler_err = pcall(handler, ctx)
+    local composed = router.compose(handler)
+    local ok, handler_err = pcall(composed, ctx)
     if not ok then
-        io.stderr:write("handler error on " .. req.method .. " " .. path .. ": " .. tostring(handler_err) .. "\n")
-        local cors = middleware.cors_headers()
-        cors["Content-Type"] = "application/json"
-        send_response(wrapper, 500, cors, middleware.encode_json({ error = "internal server error" }), false)
-        return true, false, nil
+        local is_throw = type(handler_err) == "table" and handler_err._mote_throw
+        if not is_throw then
+            io.stderr:write("handler error on " .. req.method .. " " .. path .. ": " .. tostring(handler_err) .. "\n")
+            local err_cors = middleware.cors_headers()
+            err_cors["Content-Type"] = "application/json"
+            send_response(wrapper, 500, err_cors, middleware.encode_json({ error = "internal server error" }), false)
+            return true, false, nil
+        end
     end
 
-    local resp_headers = middleware.cors_headers()
-    for k, v in pairs(ctx._response_headers) do
-        resp_headers[k] = v
-    end
-    local status = ctx._status or 200
+    local resp_status, resp_headers, resp_body = finalize_response(ctx)
 
     if ctx._sse_mode and ctx._sse_client then
-        send_sse_headers(wrapper, status, resp_headers)
-        log.info("http", req.method .. " " .. path .. " " .. status .. " (SSE)")
+        send_sse_headers(wrapper, resp_status, resp_headers)
+        log.info("http", req.method .. " " .. path .. " " .. resp_status .. " (SSE)")
         return true, false, nil, ctx._sse_client
     end
 
-    send_response(wrapper, status, resp_headers, ctx._response_body, keep_alive)
-    log.info("http", req.method .. " " .. path .. " " .. status)
+    send_response(wrapper, resp_status, resp_headers, resp_body, keep_alive)
+    log.info("http", req.method .. " " .. path .. " " .. resp_status)
     return true, keep_alive, nil
 end
 
@@ -706,89 +808,18 @@ function server.create(config)
     return instance
 end
 
--- response helpers --
-
-function server.json(ctx, status, data)
-    ctx._status = status
-    ctx._response_headers["Content-Type"] = "application/json"
-    ctx._response_body = middleware.encode_json(data)
-end
-
-function server.error(ctx, status, message)
-    server.json(ctx, status, { error = message })
-end
-
-function server.html(ctx, status, content)
-    ctx._status = status
-    ctx._response_headers["Content-Type"] = "text/html; charset=utf-8"
-    ctx._response_body = content
-end
-
-function server.text(ctx, status, content)
-    ctx._status = status
-    ctx._response_headers["Content-Type"] = "text/plain; charset=utf-8"
-    ctx._response_body = content
-end
-
-function server.file(ctx, status, data, filename, mime_type)
-    ctx._status = status
-    ctx._response_headers["Content-Type"] = mime_type or "application/octet-stream"
-    ctx._response_headers["Content-Disposition"] = 'inline; filename="' .. (filename or "download") .. '"'
-    ctx._response_body = data
-end
-
-function server.download(ctx, status, data, filename, mime_type)
-    ctx._status = status
-    ctx._response_headers["Content-Type"] = mime_type or "application/octet-stream"
-    ctx._response_headers["Content-Disposition"] = 'attachment; filename="' .. (filename or "download") .. '"'
-    ctx._response_body = data
-end
-
 function server.sse(ctx, client)
     ctx._sse_mode = true
     ctx._sse_client = client
-    ctx._status = 200
-    ctx._response_headers["Content-Type"] = "text/event-stream"
-    ctx._response_headers["Cache-Control"] = "no-store"
-    ctx._response_headers["X-Accel-Buffering"] = "no"
+    ctx.response.status = 200
+    ctx.response.headers["Content-Type"] = "text/event-stream"
+    ctx.response.headers["Cache-Control"] = "no-store"
+    ctx.response.headers["X-Accel-Buffering"] = "no"
 end
-
-function server.redirect(ctx, url, status)
-    ctx._status = status or 302
-    ctx._response_headers["Location"] = url
-    ctx._response_body = ""
-end
-
-function server.cookie(ctx, name, value, options)
-    options = options or {}
-    local parts = { name .. "=" .. (value or "") }
-
-    if options.maxAge then insert(parts, "Max-Age=" .. options.maxAge) end
-    if options.expires then insert(parts, "Expires=" .. options.expires) end
-    if options.path then insert(parts, "Path=" .. options.path) end
-    if options.domain then insert(parts, "Domain=" .. options.domain) end
-    if options.secure then insert(parts, "Secure") end
-    if options.httpOnly then insert(parts, "HttpOnly") end
-    if options.sameSite then insert(parts, "SameSite=" .. options.sameSite) end
-
-    local cookie_str = concat(parts, "; ")
-
-    local existing = ctx._response_headers["Set-Cookie"]
-    if existing then
-        if type(existing) == "table" then
-            insert(existing, cookie_str)
-        else
-            ctx._response_headers["Set-Cookie"] = { existing, cookie_str }
-        end
-    else
-        ctx._response_headers["Set-Cookie"] = cookie_str
-    end
-end
-
--- exports --
 
 server._should_keep_alive = should_keep_alive
 server._DEFAULT_KEEP_ALIVE_MAX = DEFAULT_KEEP_ALIVE_MAX
+server._ctx_methods = ctx_methods
 server.status_text = status_text
 
 return server

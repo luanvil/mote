@@ -8,7 +8,7 @@ source = {
 
 description = {
     summary = "Lightweight Lua HTTP server with routing and middleware",
-    detailed = "Coroutine-based HTTP server with Express-style routing, middleware, SSE, and more.",
+    detailed = "Coroutine-based HTTP server with routing, middleware, SSE, and more.",
     homepage = "https://github.com/luanvil/mote",
     license = "MIT",
 }
