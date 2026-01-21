@@ -207,7 +207,8 @@ ctx.config           -- Server config
 
 </details>
 
-### Middleware
+<details>
+<summary><strong>Middleware</strong></summary>
 
 Onion-style middleware with `next()`:
 
@@ -227,32 +228,10 @@ mote.use(function(ctx, next)
 end)
 ```
 
-<details>
-<summary><strong>Rate Limiting</strong></summary>
-
-```lua
-mote.ratelimit_configure({
-    ["/api/login"] = { max = 10, window = 60 },
-    ["*"] = { max = 100, window = 60 },
-})
-```
-
 </details>
 
 <details>
-<summary><strong>CORS</strong></summary>
-
-```lua
-mote.configure_cors({
-    origin = "https://example.com",
-    methods = "GET, POST",
-    headers = "Content-Type, Authorization",
-})
-```
-
-</details>
-
-### Server-Sent Events
+<summary><strong>Server-Sent Events</strong></summary>
 
 ```lua
 local broker = mote.pubsub.broker
@@ -265,6 +244,8 @@ end)
 
 broker.broadcast("messages", "new", { text = "Hello!" })
 ```
+
+</details>
 
 <details>
 <summary><strong>Server Options</strong></summary>
@@ -293,14 +274,19 @@ app:stop(5)         -- graceful: drain connections for 5 seconds
 </details>
 
 <details>
-<summary><strong>Submodules</strong></summary>
+<summary><strong>CORS & Rate Limiting</strong></summary>
 
 ```lua
-local parser = require("mote.parser")
-local jwt = require("mote.jwt")
-local crypto = require("mote.crypto")
-local log = require("mote.log")
-local url = require("mote.url")
+mote.configure_cors({
+    origin = "https://example.com",
+    methods = "GET, POST",
+    headers = "Content-Type, Authorization",
+})
+
+mote.ratelimit_configure({
+    ["/api/login"] = { max = 10, window = 60 },
+    ["*"] = { max = 100, window = 60 },
+})
 ```
 
 </details>
@@ -328,6 +314,13 @@ end)
 -- Dynamic subscriptions
 client:subscribe("posts")
 client:unsubscribe("posts")
+
+-- Submodules
+local parser = require("mote.parser")
+local jwt = require("mote.jwt")
+local crypto = require("mote.crypto")
+local log = require("mote.log")
+local url = require("mote.url")
 ```
 
 </details>
@@ -353,7 +346,7 @@ stylua .              # Format
 
 ## Examples
 
-- [ena-api](https://github.com/ena-lang/ena-api) — Compile API for the Ena programming language
+- [ena-api](https://github.com/pgagnidze/ena-api) — Compile API for the Ena programming language
 
 ## Credits
 
