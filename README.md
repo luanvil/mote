@@ -254,12 +254,14 @@ broker.broadcast("messages", "new", { text = "Hello!" })
 local app = mote.create({
     host = "0.0.0.0",
     port = 8080,
-    secret = "your-jwt-secret",
+    secret = "your-jwt-secret",   -- or set MOTE_SECRET env var
     timeout = 30,
     keep_alive_timeout = 5,
     keep_alive_max = 1000,
     max_concurrent = 10000,
     ratelimit = true,
+    reuseaddr = true,             -- allow binding to address in TIME_WAIT
+    reuseport = true,             -- allow multiple processes to bind same port
 })
 
 app:on_tick(function()
@@ -315,11 +317,28 @@ end)
 client:subscribe("posts")
 client:unsubscribe("posts")
 
+-- JWT validation hooks
+mote.set_user_validator(function(sub)
+    local user = db.get_user(sub)
+    if not user then return nil, "user not found" end
+    return true
+end)
+mote.set_issuer_resolver(function()
+    return os.getenv("JWT_ISSUER")  -- dynamic issuer for validation
+end)
+
+-- Global rate limit override (0 disables rate limiting)
+mote.ratelimit_set_global(1000)
+
+-- Logging control
+local log = require("mote.log")
+log.set_level("debug")  -- debug, info, warn, error
+log.disable()           -- or set MOTE_LOG=0 env var
+
 -- Submodules
 local parser = require("mote.parser")
 local jwt = require("mote.jwt")
 local crypto = require("mote.crypto")
-local log = require("mote.log")
 local url = require("mote.url")
 ```
 
