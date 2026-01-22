@@ -56,8 +56,14 @@ build = {
             },
             incdirs = { "mote/crypto" },
         },
-        ["mote.poll_c"] = {
-            sources = { "mote/poll.c" },
+    },
+    platforms = {
+        unix = {
+            modules = {
+                ["mote.poll_c"] = {
+                    sources = { "mote/poll.c" },
+                },
+            },
         },
     },
 }
