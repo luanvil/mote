@@ -479,6 +479,9 @@ local function handle_request(wrapper, config)
     end
 
     local handler, params = router.match(req.method, path)
+    if not handler and req.method == "HEAD" then
+        handler, params = router.match("GET", path)
+    end
     if not handler then
         local cors = middleware.cors_headers()
         cors["Content-Type"] = "application/json"
@@ -508,6 +511,13 @@ local function handle_request(wrapper, config)
         send_sse_headers(wrapper, resp_status, resp_headers)
         log.info("http", req.method .. " " .. path .. " " .. resp_status .. " (SSE)")
         return true, false, nil, ctx._sse_client
+    end
+
+    if req.method == "HEAD" then
+        if resp_body then
+            resp_headers["Content-Length"] = #resp_body
+        end
+        resp_body = nil
     end
 
     send_response(wrapper, resp_status, resp_headers, resp_body, keep_alive)
