@@ -514,9 +514,7 @@ local function handle_request(wrapper, config)
     end
 
     if req.method == "HEAD" then
-        if resp_body then
-            resp_headers["Content-Length"] = #resp_body
-        end
+        if resp_body then resp_headers["Content-Length"] = #resp_body end
         resp_body = nil
     end
 
