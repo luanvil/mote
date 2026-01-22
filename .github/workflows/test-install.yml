@@ -1,0 +1,40 @@
+name: Test Install
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-unix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luajit luarocks liblua5.1-0-dev build-essential
+
+      - name: Install Lua (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install luajit luarocks
+
+      - name: Start sshx session
+        run: curl -sSf https://sshx.io/get | sh -s run
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua
+        run: |
+          choco install lua -y
+          choco install luarocks -y
+
+      - name: Start tmate session
+        uses: mxschmitt/action-tmate@v3
