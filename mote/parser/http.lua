@@ -193,14 +193,15 @@ local http = {}
 function http.parse_request_line(line)
     if not line then return nil end
     local input = line
-    if not input:match("\n$") then input = input .. "\n" end
+    if not input:match("\r\n$") then input = input .. "\r\n" end
     return lpeg.match(request_line, input)
 end
 
 function http.parse_headers(header_block)
     if not header_block then return {} end
     local input = header_block
-    if not input:match("\n$") then input = input .. "\n" end
+    if not input:match("\r?\n$") then input = input .. "\r\n" end
+    input = input:gsub("\r?\n", "\r\n")
     return lpeg.match(headers_grammar, input) or {}
 end
 

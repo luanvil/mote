@@ -95,7 +95,6 @@ local DEFAULT_KEEP_ALIVE_TIMEOUT = 5
 local DEFAULT_KEEP_ALIVE_MAX = 1000
 local DEFAULT_MAX_CONCURRENT = 10000
 local MAX_LINE_LENGTH = 8192
-local MAX_HEADERS_SIZE = 32768
 
 -- socket --
 
@@ -118,9 +117,7 @@ end
 local function receive_line(wrapper, max_length)
     max_length = max_length or MAX_LINE_LENGTH
     while true do
-        if #wrapper.read_buffer > max_length then
-            return nil, "line too long"
-        end
+        if #wrapper.read_buffer > max_length then return nil, "line too long" end
         local nl = wrapper.read_buffer:find("\r?\n")
         if nl then
             local line = wrapper.read_buffer:sub(1, nl - 1):gsub("\r$", "")
@@ -211,21 +208,15 @@ local function read_chunk(wrapper)
     if not line then return nil, err end
 
     local size_hex = line:match("^(%x+)")
-    if not size_hex or #size_hex > 8 then
-        return nil, "invalid chunk size"
-    end
+    if not size_hex or #size_hex > 8 then return nil, "invalid chunk size" end
 
     local size = tonumber(size_hex, 16)
-    if size == 0 then
-        return false
-    end
+    if size == 0 then return false end
 
     local data, data_err = receive_bytes(wrapper, size + 2)
     if not data then return nil, data_err end
 
-    if data:sub(-2) ~= "\r\n" then
-        return nil, "chunk missing CRLF"
-    end
+    if data:sub(-2) ~= "\r\n" then return nil, "chunk missing CRLF" end
 
     return data:sub(1, -3)
 end
@@ -244,9 +235,7 @@ end
 
 local function read_body(wrapper, headers)
     local te = headers["transfer-encoding"]
-    if te and te:lower():match("chunked") then
-        return read_chunked_body(wrapper)
-    end
+    if te and te:lower():match("chunked") then return read_chunked_body(wrapper) end
     local content_length = headers["content-length"]
     if not content_length or content_length == 0 then return nil end
     return receive_bytes(wrapper, content_length)

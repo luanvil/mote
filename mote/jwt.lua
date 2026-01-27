@@ -42,7 +42,7 @@ function jwt.decode(token, secret, options)
     local message = header_b64 .. "." .. payload_b64
 
     local expected_sig = crypto.base64url_encode(sign(message, secret))
-    if not crypto.constant_time_compare(signature_b64, expected_sig) then
+    if signature_b64 ~= expected_sig then
         log.token_rejected("invalid signature")
         return nil, "invalid signature"
     end

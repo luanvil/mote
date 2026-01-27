@@ -1,13 +1,12 @@
 -- Crypto utilities
 
-local band, bor, bxor, lshift, rshift
+local band, bor, lshift, rshift
 if rawget(_G, "jit") then
     local b = require("bit")
-    band, bor, bxor, lshift, rshift = b.band, b.bor, b.bxor, b.lshift, b.rshift
+    band, bor, lshift, rshift = b.band, b.bor, b.lshift, b.rshift
 elseif _VERSION >= "Lua 5.3" then
     band = load("return function(a, b) return a & b end")()
     bor = load("return function(a, b) return a | b end")()
-    bxor = load("return function(a, b) return a ~ b end")()
     lshift = load("return function(a, n) return a << n end")()
     rshift = load("return function(a, n) return a >> n end")()
 else
@@ -16,7 +15,7 @@ else
         ok, b = pcall(require, "bit")
     end
     if ok then
-        band, bor, bxor, lshift, rshift = b.band, b.bor, b.bxor, b.lshift, b.rshift
+        band, bor, lshift, rshift = b.band, b.bor, b.lshift, b.rshift
     else
         error("no bitwise library available")
     end
@@ -104,15 +103,6 @@ function crypto.base64url_decode(data)
     local pad = (4 - #b64 % 4) % 4
     if pad > 0 and pad < 4 then b64 = b64 .. rep("=", pad) end
     return crypto.base64_decode(b64)
-end
-
-function crypto.constant_time_compare(a, b)
-    if #a ~= #b then return false end
-    local result = 0
-    for i = 1, #a do
-        result = bor(result, bxor(byte(a, i), byte(b, i)))
-    end
-    return result == 0
 end
 
 function crypto.random_bytes(n)
