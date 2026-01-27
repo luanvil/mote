@@ -159,8 +159,6 @@ local Connection = comma_sep_trim(connection_option)
 
 -- request parsing (lenient CRLF for compatibility) --
 
-local CRLF = core.CRLF + P("\n")
-
 local pchar = R("az", "AZ", "09") + S("-._~!$&'()*+,;=:@") + P("%") * R("09", "AF", "af") * R("09", "AF", "af")
 local path = Cs((P("/") * pchar ^ 0) ^ 1) + Cc("/")
 -- lenient query parsing: allow common unencoded chars for better compatibility
@@ -171,9 +169,9 @@ local location = Ct(Cg(path, "path") * (P("?") * Cg(query, "query")) ^ -1)
 local version = P("HTTP/") * C(R("09") * P(".") * R("09"))
 
 local request_line =
-    Ct(Cg(C(token), "method") * core.SP * Cg(location, "location") * core.SP * Cg(version, "version") * CRLF)
+    Ct(Cg(C(token), "method") * core.SP * Cg(location, "location") * core.SP * Cg(version, "version") * core.CRLF)
 
-local header = Cg(field_name * P(":") * OWS * C((P(1) - CRLF) ^ 0)) * CRLF
+local header = Cg(field_name * P(":") * OWS * C((P(1) - core.CRLF) ^ 0)) * core.CRLF
 
 local headers_grammar = Cf(Ct("") * header ^ 0, function(t, k, v)
     if k then
