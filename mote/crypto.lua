@@ -116,11 +116,17 @@ function crypto.constant_time_compare(a, b)
 end
 
 function crypto.random_bytes(n)
+    assert(type(n) == "number" and n > 0, "n must be positive number")
+    if hashings_ok and hashings.randombytes then
+        local bytes, err = hashings.randombytes(n)
+        if not bytes then return nil, err end
+        return bytes
+    end
     local f = io.open("/dev/urandom", "rb")
-    if not f then error("cannot open /dev/urandom") end
+    if not f then return nil, "cannot open /dev/urandom" end
     local bytes = f:read(n)
     f:close()
-    if not bytes or #bytes ~= n then error("failed to read from /dev/urandom") end
+    if not bytes or #bytes ~= n then return nil, "failed to read random bytes" end
     return bytes
 end
 

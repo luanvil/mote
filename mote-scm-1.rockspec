@@ -53,6 +53,7 @@ build = {
                 "mote/crypto/hashings.c",
                 "mote/crypto/sha256.c",
                 "mote/crypto/hmac_sha256.c",
+                "mote/crypto/randombytes.c",
             },
             incdirs = { "mote/crypto" },
         },
@@ -62,6 +63,20 @@ build = {
             modules = {
                 ["mote.poll_c"] = {
                     sources = { "mote/poll.c" },
+                },
+            },
+        },
+        windows = {
+            modules = {
+                ["mote.crypto_c"] = {
+                    sources = {
+                        "mote/crypto/hashings.c",
+                        "mote/crypto/sha256.c",
+                        "mote/crypto/hmac_sha256.c",
+                        "mote/crypto/randombytes.c",
+                    },
+                    incdirs = { "mote/crypto" },
+                    libraries = { "advapi32" },
                 },
             },
         },
