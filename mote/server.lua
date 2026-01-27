@@ -94,6 +94,8 @@ local status_text = setmetatable({
 local DEFAULT_KEEP_ALIVE_TIMEOUT = 5
 local DEFAULT_KEEP_ALIVE_MAX = 1000
 local DEFAULT_MAX_CONCURRENT = 10000
+local MAX_LINE_LENGTH = 8192
+local MAX_HEADERS_SIZE = 32768
 
 -- socket --
 
@@ -113,8 +115,12 @@ local function create_client_wrapper(client)
     }
 end
 
-local function receive_line(wrapper)
+local function receive_line(wrapper, max_length)
+    max_length = max_length or MAX_LINE_LENGTH
     while true do
+        if #wrapper.read_buffer > max_length then
+            return nil, "line too long"
+        end
         local nl = wrapper.read_buffer:find("\r?\n")
         if nl then
             local line = wrapper.read_buffer:sub(1, nl - 1):gsub("\r$", "")
@@ -424,7 +430,8 @@ local function handle_request(wrapper, config)
 
     local req = parse_request_line(line)
     if not req then
-        send_response(wrapper, 400, {}, "Bad Request", false)
+        local status = (err == "line too long") and 414 or 400
+        send_response(wrapper, status, {}, status_text[status], false)
         return false, false, "bad request"
     end
 
