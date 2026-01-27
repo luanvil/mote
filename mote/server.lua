@@ -206,7 +206,47 @@ local function parse_headers(wrapper)
     return http_parser.parse_headers(table.concat(header_lines, "\n"))
 end
 
+local function read_chunk(wrapper)
+    local line, err = receive_line(wrapper, MAX_LINE_LENGTH)
+    if not line then return nil, err end
+
+    local size_hex = line:match("^(%x+)")
+    if not size_hex or #size_hex > 8 then
+        return nil, "invalid chunk size"
+    end
+
+    local size = tonumber(size_hex, 16)
+    if size == 0 then
+        return false
+    end
+
+    local data, data_err = receive_bytes(wrapper, size + 2)
+    if not data then return nil, data_err end
+
+    if data:sub(-2) ~= "\r\n" then
+        return nil, "chunk missing CRLF"
+    end
+
+    return data:sub(1, -3)
+end
+
+local function read_chunked_body(wrapper)
+    local chunks = {}
+    while true do
+        local chunk, err = read_chunk(wrapper)
+        if chunk == nil then return nil, err end
+        if chunk == false then break end
+        chunks[#chunks + 1] = chunk
+    end
+    local _ = parse_headers(wrapper)
+    return concat(chunks)
+end
+
 local function read_body(wrapper, headers)
+    local te = headers["transfer-encoding"]
+    if te and te:lower():match("chunked") then
+        return read_chunked_body(wrapper)
+    end
     local content_length = headers["content-length"]
     if not content_length or content_length == 0 then return nil end
     return receive_bytes(wrapper, content_length)
