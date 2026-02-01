@@ -101,9 +101,7 @@ function middleware.parse_body(body_raw, headers)
         return parts, nil, true
     end
 
-    if content_type:find("application/x%-www%-form%-urlencoded", 1, false) then
-        return url.parse_query(body_raw)
-    end
+    if content_type:find("application/x%-www%-form%-urlencoded", 1, false) then return url.parse_query(body_raw) end
 
     local ok, data = pcall(decode, body_raw)
     if not ok then return nil, "invalid JSON: " .. tostring(data) end
