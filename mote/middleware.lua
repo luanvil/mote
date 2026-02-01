@@ -84,7 +84,13 @@ end
 function middleware.parse_body(body_raw, headers)
     if not body_raw or body_raw == "" then return {} end
 
-    local content_type = headers and headers["content-type"] or ""
+    local ct = headers and headers["content-type"]
+    local content_type = ""
+    if type(ct) == "table" and ct.type then
+        content_type = ct.type
+    elseif type(ct) == "string" then
+        content_type = ct
+    end
 
     if multipart.is_multipart(content_type) then
         local boundary = multipart.get_boundary(content_type)
