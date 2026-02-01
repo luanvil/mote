@@ -4,6 +4,7 @@ local cjson = require("cjson")
 local jwt = require("mote.jwt")
 local log = require("mote.log")
 local multipart = require("mote.parser.multipart")
+local url = require("mote.url")
 
 local encode, decode = cjson.encode, cjson.decode
 
@@ -98,6 +99,10 @@ function middleware.parse_body(body_raw, headers)
         local parts, err = multipart.parse(body_raw, boundary)
         if not parts then return nil, "failed to parse multipart: " .. (err or "unknown error") end
         return parts, nil, true
+    end
+
+    if content_type:find("application/x%-www%-form%-urlencoded", 1, false) then
+        return url.parse_query(body_raw)
     end
 
     local ok, data = pcall(decode, body_raw)
