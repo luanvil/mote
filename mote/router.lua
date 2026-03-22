@@ -94,6 +94,23 @@ function router.match(method, path)
     return nil
 end
 
+function router.methods_for_path(path)
+    local methods = {}
+    local found = false
+    for _, route in ipairs(routes) do
+        local captures = route.pattern:match(path)
+        if captures then
+            found = true
+            if route.method == "*" then
+                return nil -- wildcard matches all methods, no restriction
+            end
+            methods[route.method] = true
+        end
+    end
+    if not found then return nil end
+    return methods
+end
+
 function router.clear()
     routes = {}
     middleware_stack = {}

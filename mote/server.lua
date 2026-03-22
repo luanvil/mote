@@ -476,7 +476,18 @@ local function handle_request(wrapper, config)
     local query = req.location.query
 
     if middleware.is_preflight(req.method) then
-        local cors = middleware.cors_headers()
+        local path_methods = router.methods_for_path(path)
+        local allow_methods = nil
+        if path_methods then
+            local list = {}
+            for m in pairs(path_methods) do
+                list[#list + 1] = m
+            end
+            list[#list + 1] = "OPTIONS"
+            table.sort(list)
+            allow_methods = table.concat(list, ", ")
+        end
+        local cors = middleware.cors_headers(allow_methods)
         cors["Content-Length"] = "0"
         send_response(wrapper, 204, cors, nil, keep_alive)
         log.info("http", req.method .. " " .. path .. " 204")
@@ -519,10 +530,26 @@ local function handle_request(wrapper, config)
         handler, params = router.match("GET", path)
     end
     if not handler then
-        local cors = middleware.cors_headers()
-        cors["Content-Type"] = "application/json"
-        send_response(wrapper, 404, cors, middleware.encode_json({ error = "not found" }), keep_alive)
-        log.info("http", req.method .. " " .. path .. " 404")
+        local path_methods = router.methods_for_path(path)
+        if path_methods then
+            local list = {}
+            for m in pairs(path_methods) do
+                list[#list + 1] = m
+            end
+            list[#list + 1] = "OPTIONS"
+            table.sort(list)
+            local allow = table.concat(list, ", ")
+            local cors = middleware.cors_headers(allow)
+            cors["Content-Type"] = "application/json"
+            cors["Allow"] = allow
+            send_response(wrapper, 405, cors, middleware.encode_json({ error = "method not allowed" }), keep_alive)
+            log.info("http", req.method .. " " .. path .. " 405")
+        else
+            local cors = middleware.cors_headers()
+            cors["Content-Type"] = "application/json"
+            send_response(wrapper, 404, cors, middleware.encode_json({ error = "not found" }), keep_alive)
+            log.info("http", req.method .. " " .. path .. " 404")
+        end
         return true, keep_alive, nil
     end
 
