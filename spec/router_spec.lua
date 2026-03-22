@@ -49,6 +49,29 @@ describe("router", function()
         assert.is_nil(router.match("GET", "/not-exists"))
     end)
 
+    describe("methods_for_path", function()
+        it("returns methods registered for a path", function()
+            router.get("/resource", function() end)
+            router.post("/resource", function() end)
+
+            local methods = router.methods_for_path("/resource")
+            assert.is_truthy(methods)
+            assert.is_true(methods["GET"])
+            assert.is_true(methods["POST"])
+            assert.is_nil(methods["DELETE"])
+        end)
+
+        it("returns nil for unknown paths", function()
+            router.get("/exists", function() end)
+            assert.is_nil(router.methods_for_path("/not-exists"))
+        end)
+
+        it("returns nil for wildcard routes", function()
+            router.all("/anything", function() end)
+            assert.is_nil(router.methods_for_path("/anything"))
+        end)
+    end)
+
     describe("middleware", function()
         it("runs middleware before handler", function()
             local order = {}

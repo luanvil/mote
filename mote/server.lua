@@ -13,6 +13,7 @@ local url_mod = require("mote.url")
 
 local concat = table.concat
 local insert = table.insert
+local sort = table.sort
 
 local server = {}
 
@@ -444,6 +445,17 @@ local function should_keep_alive(http_version, headers, wrapper, config)
     return tonumber(http_version) >= 1.1
 end
 
+local function build_allow_header(path_methods)
+    if not path_methods then return nil end
+    local list = {}
+    for m in pairs(path_methods) do
+        list[#list + 1] = m
+    end
+    list[#list + 1] = "OPTIONS"
+    sort(list)
+    return concat(list, ", ")
+end
+
 local function handle_request(wrapper, config)
     wrapper.request_count = wrapper.request_count + 1
     local start_time = socket.gettime()
@@ -476,7 +488,8 @@ local function handle_request(wrapper, config)
     local query = req.location.query
 
     if middleware.is_preflight(req.method) then
-        local cors = middleware.cors_headers()
+        local allow = build_allow_header(router.methods_for_path(path))
+        local cors = middleware.cors_headers(allow)
         cors["Content-Length"] = "0"
         send_response(wrapper, 204, cors, nil, keep_alive)
         log.info("http", req.method .. " " .. path .. " 204")
@@ -519,10 +532,19 @@ local function handle_request(wrapper, config)
         handler, params = router.match("GET", path)
     end
     if not handler then
-        local cors = middleware.cors_headers()
-        cors["Content-Type"] = "application/json"
-        send_response(wrapper, 404, cors, middleware.encode_json({ error = "not found" }), keep_alive)
-        log.info("http", req.method .. " " .. path .. " 404")
+        local allow = build_allow_header(router.methods_for_path(path))
+        if allow then
+            local cors = middleware.cors_headers(allow)
+            cors["Content-Type"] = "application/json"
+            cors["Allow"] = allow
+            send_response(wrapper, 405, cors, middleware.encode_json({ error = "method not allowed" }), keep_alive)
+            log.info("http", req.method .. " " .. path .. " 405")
+        else
+            local cors = middleware.cors_headers()
+            cors["Content-Type"] = "application/json"
+            send_response(wrapper, 404, cors, middleware.encode_json({ error = "not found" }), keep_alive)
+            log.info("http", req.method .. " " .. path .. " 404")
+        end
         return true, keep_alive, nil
     end
 

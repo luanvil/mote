@@ -18,11 +18,12 @@ local cors_base = {
     ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
 }
 
-function middleware.cors_headers()
+function middleware.cors_headers(methods)
     local headers = {}
     for k, v in pairs(cors_base) do
         headers[k] = v
     end
+    if methods then headers["Access-Control-Allow-Methods"] = methods end
     return headers
 end
 
