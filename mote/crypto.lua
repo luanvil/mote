@@ -17,7 +17,34 @@ else
     if ok then
         band, bor, lshift, rshift = b.band, b.bor, b.lshift, b.rshift
     else
-        error("no bitwise library available")
+        local floor = math.floor
+        local MOD = 2 ^ 32
+
+        band = function(x, y)
+            local result, bit = 0, 1
+            for _ = 1, 32 do
+                if x % 2 == 1 and y % 2 == 1 then result = result + bit end
+                x, y, bit = floor(x / 2), floor(y / 2), bit * 2
+            end
+            return result
+        end
+
+        bor = function(x, y)
+            local result, bit = 0, 1
+            for _ = 1, 32 do
+                if x % 2 == 1 or y % 2 == 1 then result = result + bit end
+                x, y, bit = floor(x / 2), floor(y / 2), bit * 2
+            end
+            return result
+        end
+
+        lshift = function(a, n)
+            return (a * 2 ^ n) % MOD
+        end
+
+        rshift = function(a, n)
+            return floor(a / 2 ^ n) % MOD
+        end
     end
 end
 local byte, char, format, rep, sub = string.byte, string.char, string.format, string.rep, string.sub
