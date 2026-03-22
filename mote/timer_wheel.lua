@@ -68,16 +68,15 @@ function M.new()
 
             for i = 1, #slot do
                 local timer = slot[i]
-                if timer.cancelled then
-                    goto continue
-                elseif timer.rounds > 0 then
-                    timer.rounds = timer.rounds - 1
-                    insert(remaining, timer)
-                else
-                    local ok, err = pcall(timer.callback)
-                    if not ok then io.stderr:write("timer callback error: " .. tostring(err) .. "\n") end
+                if not timer.cancelled then
+                    if timer.rounds > 0 then
+                        timer.rounds = timer.rounds - 1
+                        insert(remaining, timer)
+                    else
+                        local ok, err = pcall(timer.callback)
+                        if not ok then io.stderr:write("timer callback error: " .. tostring(err) .. "\n") end
+                    end
                 end
-                ::continue::
             end
 
             self._wheel[self._current] = remaining
