@@ -6,8 +6,8 @@
 
 Lightweight Lua HTTP server with routing and middleware.
 
-[![CI](https://github.com/luanvil/mote/actions/workflows/ci.yml/badge.svg)](https://github.com/luanvil/mote/actions/workflows/ci.yml)
-[![LuaRocks](https://img.shields.io/luarocks/v/luanvil/mote)](https://luarocks.org/modules/luanvil/mote)
+[![CI](https://github.com/Owloops/mote/actions/workflows/ci.yml/badge.svg)](https://github.com/Owloops/mote/actions/workflows/ci.yml)
+[![LuaRocks](https://img.shields.io/luarocks/v/owloops/mote)](https://luarocks.org/modules/owloops/mote)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
