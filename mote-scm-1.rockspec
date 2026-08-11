@@ -3,14 +3,15 @@ package = "mote"
 version = "scm-1"
 
 source = {
-    url = "git+https://github.com/luanvil/mote.git",
+    url = "git+https://github.com/Owloops/mote.git",
 }
 
 description = {
     summary = "Lightweight Lua HTTP server with routing and middleware",
     detailed = "Coroutine-based HTTP server with routing, middleware, SSE, and more.",
-    homepage = "https://github.com/luanvil/mote",
+    homepage = "https://github.com/Owloops/mote",
     license = "MIT",
+    maintainer = "Papuna Gagnidze <pgagnidze@owloops.com>",
 }
 
 dependencies = {
